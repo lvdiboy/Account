@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="密码库">
+<meta name="theme-color" content="#1c6a56">
+</head>
+<body>
+<title>私人密码库</title>
+<style>
+/* Layout: top tool bar, category rail on the left, account ledger on the right; the rail turns into a chip strip on phones */
+:root{
+  --bg:#eef2f0; --panel:#ffffff; --field:#f8faf9; --ink:#16201d; --muted:#5b6964; --line:#d6dfdb;
+  --accent:#1c6a56; --accent-ink:#ffffff; --chip:#e1ebe7; --warn:#9a5600; --warn-bg:#fbefdc;
+  --danger:#b3261e; --danger-bg:#fbe4e2; --shade:rgba(10,20,16,.45);
+  --font:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1412; --panel:#161e1b; --field:#111916; --ink:#e3ebe7; --muted:#93a39d; --line:#29342f;
+  --accent:#5cc2a2; --accent-ink:#05231a; --chip:#1f2e29; --warn:#e8ac55; --warn-bg:#332613;
+  --danger:#ff8a80; --danger-bg:#3a1a18; --shade:rgba(0,0,0,.6); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1412; --panel:#161e1b; --field:#111916; --ink:#e3ebe7; --muted:#93a39d; --line:#29342f;
+  --accent:#5cc2a2; --accent-ink:#05231a; --chip:#1f2e29; --warn:#e8ac55; --warn-bg:#332613;
+  --danger:#ff8a80; --danger-bg:#3a1a18; --shade:rgba(0,0,0,.6); color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 var(--font)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:4px;line-height:1.4}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.danger{color:var(--danger)}
+.btn.danger-fill{background:var(--danger);border-color:var(--danger);color:var(--panel);font-weight:600}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{padding:3px 9px;font-size:12.5px}
+input[type=text],input[type=password],input[type=search],input[type=number],select,textarea{background:var(--field);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;min-width:0}
+textarea{resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none}
+.err{color:var(--danger);font-size:13px;min-height:1em}
+
+/* lock screen */
+.lock{min-height:100%;display:grid;place-items:center;padding:32px 16px}
+.lock-card{width:100%;max-width:390px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px 24px;display:grid;gap:16px}
+.lock-card form{display:grid;gap:12px}
+.mark{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;letter-spacing:.04em}
+.mark svg{flex:none}
+.lock-foot{border-top:1px solid var(--line);padding-top:12px;display:flex;justify-content:center}
+.field{display:grid;gap:4px}
+.field>span{font-size:12.5px;color:var(--muted)}
+
+/* app shell */
+.app{height:100%;display:flex;flex-direction:column}
+.top{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.top .mark{font-size:16px;margin-right:6px}
+.top .search{flex:1 1 220px;max-width:420px}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.banner{background:var(--warn-bg);color:var(--warn);padding:7px 16px;font-size:13px;border-bottom:1px solid var(--line)}
+.main{flex:1;display:flex;min-height:0}
+.side{width:212px;flex:none;border-right:1px solid var(--line);overflow-y:auto;padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.side .lbl{font-size:11.5px;letter-spacing:.08em;color:var(--muted);padding:8px 10px 4px}
+.cat{display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border:0;background:none;border-radius:6px;text-align:left;cursor:pointer}
+.cat:hover{background:var(--chip)}
+.cat.on{background:var(--chip);font-weight:600}
+.cat .n{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px;font-weight:400}
+.cat.risk .n{color:var(--warn)}
+.dot{width:9px;height:9px;border-radius:3px;flex:none}
+.list{flex:1;overflow-y:auto;padding:14px 20px 40px;min-width:0}
+.list-h{display:flex;align-items:baseline;gap:10px;padding:0 4px 10px;border-bottom:2px solid var(--ink)}
+.list-h h2{margin:0;font-size:18px}
+.rows{background:var(--panel);border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px}
+.row{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--field)}
+.av{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;font-weight:700;color:#fff;font-size:15px}
+.info{min-width:0}
+.t{font-weight:600;display:flex;gap:6px;align-items:center;min-width:0}
+.t span.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s .u{font-family:var(--mono);color:var(--ink)}
+.acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.chip{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;background:var(--chip);color:var(--muted);font-weight:400;white-space:nowrap;line-height:1.7}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted);display:grid;gap:12px;justify-items:center}
+.empty p{max-width:30em;margin:0}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:0;width:min(600px,calc(100vw - 32px));max-height:calc(100vh - 40px)}
+dialog.wide{width:min(1040px,calc(100vw - 32px))}
+dialog.narrow{width:min(420px,calc(100vw - 32px))}
+dialog::backdrop{background:var(--shade)}
+.dlg{display:flex;flex-direction:column;max-height:calc(100vh - 42px)}
+.dlg>header{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px}
+.dlg>.bd{padding:16px 18px;overflow:auto;display:grid;gap:12px;min-height:0}
+.dlg>footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+.dlg>footer .grow{margin-right:auto}
+.inline{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.inline>input[type=text],.inline>input[type=password]{flex:1 1 180px}
+.pw{font-family:var(--mono)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.suggest{font-size:12.5px;color:var(--accent)}
+.catrow{display:grid;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+.catrow-h{display:flex;gap:6px;align-items:center}
+.catrow-h input{flex:1}
+.catrow textarea{font-size:12.5px}
+.drop{display:grid;place-items:center;gap:6px;border:1.5px dashed var(--line);border-radius:8px;padding:22px;text-align:center;cursor:pointer;color:var(--muted)}
+.drop.over{border-color:var(--accent);color:var(--accent)}
+.mapping{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:6px;max-height:48vh}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
+th{position:sticky;top:0;background:var(--panel);z-index:1;font-weight:600;font-size:12px;color:var(--muted)}
+td.cut{max-width:220px;overflow:hidden;text-overflow:ellipsis}
+td select{width:auto;padding:3px 6px}
+tr.off td{opacity:.5}
+.tally{display:flex;flex-wrap:wrap;gap:6px}
+.opt{display:grid;gap:4px;padding:12px 0;border-bottom:1px solid var(--line)}
+.opt:last-child{border-bottom:0}
+.opt h3{margin:0;font-size:14px}
+.opt p{margin:0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;z-index:9999;max-width:calc(100vw - 32px);box-shadow:0 6px 20px var(--shade)}
+.toast.bad{background:var(--danger)}
+
+@media (max-width:760px){
+  .main{flex-direction:column}
+  .side{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;padding:8px 12px;gap:4px}
+  .side .lbl{display:none}
+  .cat{width:auto;white-space:nowrap}
+  .list{padding:12px 16px 40px}
+  .row{grid-template-columns:32px minmax(0,1fr)}
+  .av{width:32px;height:32px}
+  .acts{grid-column:2;justify-content:flex-start}
+  .grid2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div id="lock" class="lock">
+  <div class="lock-card">
+    <div class="mark"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="11" width="20" height="13" rx="3" fill="var(--accent)"/><path d="M8 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="var(--accent)" stroke-width="2.4"/><circle cx="13" cy="17.5" r="2.2" fill="var(--panel)"/></svg>私人密码库</div>
+    <p class="muted small" style="margin:0">账号数据用主密码加密，只存在这台设备的浏览器里，不会上传到任何地方。</p>
+    <form id="unlockBox" hidden>
+      <label class="field"><span>主密码</span><input type="password" id="unlockPw" autocomplete="current-password"></label>
+      <div class="err" id="unlockErr"></div>
+      <button class="btn primary" type="submit" id="unlockGo">解锁</button>
+      <p class="small muted" id="demoHint" hidden style="margin:0">演示版主密码：<b class="pw">demo1234</b></p>
+    </form>
+    <form id="setupBox" hidden>
+      <label class="field"><span>设置主密码（至少 8 位）</span><input type="password" id="setPw1" autocomplete="new-password"></label>
+      <label class="field"><span>再输入一次</span><input type="password" id="setPw2" autocomplete="new-password"></label>
+      <p class="small muted" style="margin:0">主密码没有任何找回方式。忘记它，密码库就再也打不开。</p>
+      <div class="err" id="setupErr"></div>
+      <button class="btn primary" type="submit">创建密码库</button>
+    </form>
+    <div class="lock-foot">
+      <button type="button" class="btn ghost small" id="restoreBtn">从加密备份恢复</button>
+      <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="app" hidden>
+  <header class="top">
+    <div class="mark"><svg width="20" height="20" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="11" width="20" height="13" rx="3" fill="var(--accent)"/><path d="M8 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="var(--accent)" stroke-width="2.4"/><circle cx="13" cy="17.5" r="2.2" fill="var(--panel)"/></svg>私人密码库</div>
+    <input type="search" id="q" class="search" placeholder="搜索名称、网址、账号、备注" aria-label="搜索">
+    <div class="tools">
+      <button class="btn primary" id="newBtn">新建</button>
+      <button class="btn" id="importBtn">导入</button>
+      <button class="btn" id="catBtn">分类管理</button>
+      <button class="btn" id="bakBtn">备份与设置</button>
+      <button class="btn" id="lockBtn">锁定</button>
+    </div>
+  </header>
+  <div class="banner" id="demoBanner" hidden>演示版：里面的账号全是虚构的。请不要在这个网页里输入真实密码，真实使用请用发给你的 HTML 文件在自己电脑上打开。</div>
+  <div class="main">
+    <nav class="side" id="side" aria-label="分类"></nav>
+    <main class="list" id="list"></main>
+  </div>
+</div>
+
+<dialog id="entryDlg">
+  <form class="dlg" id="entryForm">
+    <header id="entryHead">新建账号</header>
+    <div class="bd">
+      <div class="grid2">
+        <label class="field"><span>名称</span><input type="text" id="eTitle" placeholder="例如：招商银行" autocomplete="off"></label>
+        <label class="field"><span>网址</span><input type="text" id="eUrl" placeholder="https://" autocomplete="off"></label>
+      </div>
+      <label class="field"><span>账号 / 用户名 / 手机号</span><input type="text" id="eUser" autocomplete="off"></label>
+      <div class="field"><span>密码</span>
+        <div class="inline">
+          <input type="password" id="ePw" class="pw" autocomplete="new-password">
+          <button type="button" class="btn sm" id="eShow">显示</button>
+          <button type="button" class="btn sm" id="eCopy">复制</button>
+        </div>
+        <div class="inline small muted">
+          <button type="button" class="btn sm" id="eGen">生成随机密码</button>
+          <label class="inline">长度 <input type="number" id="eLen" min="8" max="64" value="16" style="width:68px"></label>
+          <label class="inline"><input type="checkbox" id="eSym" checked> 含符号</label>
+        </div>
+      </div>
+      <label class="field"><span>分类</span><select id="eCat"></select></label>
+      <div class="suggest" id="eSuggest"></div>
+      <label class="field"><span>备注（安全问题、绑定手机、恢复码等）</span><textarea id="eNotes" rows="3"></textarea></label>
+      <div class="err" id="entryErr"></div>
+    </div>
+    <footer>
+      <button type="button" class="btn danger grow" id="eDel">删除</button>
+      <button type="button" class="btn" id="eCancel">取消</button>
+      <button type="submit" class="btn primary">保存</button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog id="catDlg" class="wide">
+  <div class="dlg">
+    <header>分类管理</header>
+    <div class="bd">
+      <p class="small muted" style="margin:0">导入或新建账号时，会拿名称、网址和备注去匹配每个分类的关键词，命中越多、关键词越长越优先；都没命中就放进「其他」。英文关键词按单词开头匹配，所以 steam 能匹配 store.steampowered.com。</p>
+      <div id="catRows"></div>
+      <div><button type="button" class="btn" id="catAdd">＋ 添加分类</button></div>
+    </div>
+    <footer>
+      <button type="button" class="btn grow" id="catReclass">保存并按关键词重新分类全部账号</button>
+      <button type="button" class="btn" id="catCancel">取消</button>
+      <button type="button" class="btn primary" id="catSave">保存</button>
+    </footer>
+  </div>
+</dialog>
+
+<dialog id="impDlg" class="wide">
+  <div class="dlg">
+    <header>导入账号</header>
+    <div class="bd" id="imp1">
+      <p class="small muted" style="margin:0">支持 Chrome、Edge、Firefox、Safari、Bitwarden、1Password、LastPass、KeePass 导出的 CSV，也支持自己用 Excel 整理后「另存为 CSV」的表格（第一行写表头，如：名称、网址、账号、密码、备注）。文件只在本机读取，不会上传。</p>
+      <label class="drop" id="drop">
+        <b>选择 CSV 文件，或拖到这里</b>
+        <span class="small">.csv / .tsv / .txt，UTF-8 或 GBK 编码都可以</span>
+        <input type="file" id="impFile" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden>
+      </label>
+      <label class="field"><span>也可以直接粘贴表格内容</span><textarea id="impText" rows="7" class="pw small" spellcheck="false"></textarea></label>
+      <div class="err" id="impErr"></div>
+    </div>
+    <div class="bd" id="imp2" hidden>
+      <label class="inline small"><input type="checkbox" id="impHeader" checked> 第一行是表头</label>
+      <div class="mapping" id="impMap"></div>
+      <div id="impSum" class="small"></div>
+      <div class="inline small">
+        <span class="muted">显示</span>
+        <select id="impFilter" style="width:auto">
+          <option value="all">全部</option>
+          <option value="other">仅未匹配（其他）</option>
+          <option value="dup">仅重复</option>
+        </select>
+        <button type="button" class="btn sm" id="impAll">全选</button>
+        <button type="button" class="btn sm" id="impNone">全不选</button>
+      </div>
+      <div class="table-wrap"><table id="impTable"></table></div>
+    </div>
+    <footer>
+      <button type="button" class="btn grow" id="impBack" hidden>返回</button>
+      <button type="button" class="btn" id="impCancel">取消</button>
+      <button type="button" class="btn primary" id="impParse">解析</button>
+      <button type="button" class="btn primary" id="impGo" hidden>导入</button>
+    </footer>
+  </div>
+</dialog>
+
+<dialog id="bakDlg">
+  <div class="dlg">
+    <header>备份与设置</header>
+    <div class="bd">
+      <div class="opt">
+        <h3>下载加密备份</h3>
+        <p class="small muted">得到一个 .json 文件，内容仍然用当前主密码加密。清理浏览器数据会删掉本机密码库，所以每次大量修改后都建议备份一次，存到网盘或 U 盘。</p>
+        <p class="small muted" id="bakInfo"></p>
+        <div><button type="button" class="btn primary" id="bakDown">下载加密备份</button></div>
+      </div>
+      <div class="opt">
+        <h3>合并另一份加密备份</h3>
+        <p class="small muted">把另一台设备导出的备份并入当前密码库，重复的账号会跳过。</p>
+        <div class="inline">
+          <input type="file" id="mergeFile" accept=".json,application/json" style="flex:1 1 200px;min-width:0">
+          <input type="password" id="mergePw" placeholder="那份备份的主密码" style="flex:1 1 160px">
+          <button type="button" class="btn" id="mergeGo">合并</button>
+        </div>
+      </div>
+      <div class="opt">
+        <h3>修改主密码</h3>
+        <div class="grid2">
+          <input type="password" id="cpOld" placeholder="当前主密码" autocomplete="current-password">
+          <span></span>
+          <input type="password" id="cpNew1" placeholder="新主密码（至少 8 位）" autocomplete="new-password">
+          <input type="password" id="cpNew2" placeholder="再输入一次" autocomplete="new-password">
+        </div>
+        <div><button type="button" class="btn" id="cpGo">修改</button></div>
+      </div>
+      <div class="opt">
+        <h3>导出明文 CSV</h3>
+        <p class="small muted">用于迁移到别的密码管理器。文件里的密码没有加密，用完请立刻删除。</p>
+        <div><button type="button" class="btn danger" id="csvDown">导出明文 CSV</button></div>
+      </div>
+      <div class="opt">
+        <h3>删除本机密码库</h3>
+        <p class="small muted">清空这台设备上的全部数据，无法撤销。</p>
+        <div><button type="button" class="btn danger" id="wipeGo">删除本机密码库</button></div>
+      </div>
+      <div class="err" id="bakErr"></div>
+    </div>
+    <footer><button type="button" class="btn" id="bakClose">关闭</button></footer>
+  </div>
+</dialog>
+
+<dialog id="askDlg" class="narrow">
+  <div class="dlg">
+    <header id="askTitle"></header>
+    <div class="bd"><p id="askMsg" style="margin:0"></p></div>
+    <footer>
+      <button type="button" class="btn" id="askCancel">取消</button>
+      <button type="button" class="btn primary" id="askOk">确定</button>
+    </footer>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+const DEMO = false;
+const STORE_KEY = DEMO ? 'pv_demo_v1' : 'pv_vault_v1';
+const ITER = 310000;               // PBKDF2-SHA256 iterations
+const IDLE_MS = 5 * 60 * 1000;     // auto-lock after 5 minutes without activity
+const CLIP_MS = 30 * 1000;         // clear copied password after 30 seconds
+const $ = s => document.querySelector(s);
+const te = new TextEncoder(), td = new TextDecoder();
+
+const DEFAULT_CATS = [
+  ['game', '游戏', 'steam, epic, epicgames, battle.net, blizzard, 暴雪, 网易游戏, mihoyo, 米哈游, hoyoverse, 原神, 崩坏, 腾讯游戏, wegame, playstation, psn, xbox, nintendo, 任天堂, ea.com, origin, ubisoft, 育碧, riot, 英雄联盟, 王者荣耀, 和平精英, roblox, minecraft, 我的世界, taptap, 4399, 游戏, game'],
+  ['finance', '金融银行', 'bank, 银行, icbc, ccb, boc, abchina, cmbchina, 招商, 工商, 建设银行, 农业银行, 中国银行, 交通银行, bankcomm, 浦发, spdb, 中信, citic, 平安银行, 邮储, psbc, 兴业, cib, 民生, 光大, 信用卡, 证券, securities, 基金, 股票, 券商, futu, 富途, 老虎证券, 雪球, xueqiu, 东方财富, eastmoney, 同花顺, 10jqka, 天天基金, 蚂蚁财富, 京东金融, 保险, insurance, 理财, fidelity, schwab, chase, citi, hsbc, 汇丰, robinhood, ibkr, interactive brokers, coinbase, binance, 币安, okx'],
+  ['pay', '支付', 'alipay, 支付宝, 微信支付, wechat pay, paypal, 云闪付, unionpay, 银联, stripe, wise, venmo, apple pay, payoneer, 翼支付, 数字人民币'],
+  ['social', '社交通讯', 'wechat, weixin, 微信, qq, weibo, 微博, 小红书, xiaohongshu, douban, 豆瓣, zhihu, 知乎, 贴吧, tieba, 抖音, douyin, tiktok, 快手, kuaishou, facebook, instagram, twitter, x.com, threads, telegram, discord, whatsapp, line.me, com.tencent.mm, reddit, snapchat, signal, 陌陌, soul, 探探, 即刻'],
+  ['mail', '邮箱', 'mail, email, 邮箱, 邮件, gmail, outlook, hotmail, live.com, 163.com, 126.com, yeah.net, foxmail, exmail, 网易邮箱, qq邮箱, 139.com, sina.com, sohu.com, protonmail, proton.me, yahoo, aol'],
+  ['shop', '购物', 'taobao, 淘宝, tmall, 天猫, jd.com, 京东, pinduoduo, 拼多多, 闲鱼, goofish, 唯品会, vip.com, 苏宁, suning, 得物, poizon, 当当, dangdang, 1688, amazon, 亚马逊, ebay, aliexpress, shein, temu, costco, walmart, ikea, 宜家, 山姆, 购物, shop, store, 商城'],
+  ['life', '生活服务', '美团, meituan, 饿了么, ele.me, 大众点评, dianping, 盒马, 叮咚, 朴朴, 58同城, 58.com, 贝壳, ke.com, 链家, 自如, 安居客, 顺丰, sf-express, 菜鸟, 快递, 物业, 水费, 电费, 燃气, 国家电网, 中国移动, 10086, 中国联通, 10010, 中国电信, 189.cn, 宽带, 话费, 外卖'],
+  ['travel', '出行旅游', '12306, 铁路, 携程, ctrip, trip.com, 飞猪, fliggy, 去哪儿, qunar, 同程, ly.com, 马蜂窝, 滴滴, didi, 高德, amap, 百度地图, 航旅纵横, 航空, airline, airlines, 东航, 南航, 国航, airchina, ceair, csair, uber, lyft, airbnb, booking, expedia, agoda, 酒店, hotel, 万豪, marriott, 希尔顿, hilton, 华住, 锦江, 首汽, 曹操出行, 哈啰, 共享单车, 旅行, 旅游'],
+  ['media', '影音娱乐', 'netflix, youtube, bilibili, 哔哩, b站, 爱奇艺, iqiyi, 优酷, youku, 腾讯视频, v.qq.com, 芒果tv, mgtv, 西瓜视频, 咪咕, spotify, apple music, 网易云音乐, music.163, qq音乐, y.qq.com, 酷狗, kugou, 酷我, disney, hbo, max.com, prime video, twitch, 喜马拉雅, ximalaya, 起点, qidian, 晋江, 番茄小说, 微信读书, 豆瓣fm, 视频, 音乐, 小说'],
+  ['study', '学习教育', 'coursera, udemy, edx, khan, 学堂在线, xuetangx, 中国大学mooc, icourse, mooc, duolingo, 多邻国, 知网, cnki, 万方, 学信网, chsi, 学校, 大学, 校园, edu, 教务, 网课, 得到, 樊登, 有道, youdao, 百词斬, 扇贝, 考试, 雅思, 托福, ielts, toefl, 驾考'],
+  ['work', '工作办公', '钉钉, dingtalk, 飞书, feishu, lark, 企业微信, work.weixin, slack, zoom, 腾讯会议, meeting.tencent, teams, linkedin, 领英, boss直聘, zhipin, 智联, zhaopin, 猎聘, liepin, 前程无忧, 51job, 脉脉, notion, 印象笔记, evernote, 语雀, yuque, 石墨, shimo, 金山文档, wps, office, microsoft 365, office365, jira, confluence, trello, 工作, 公司, 办公, oa'],
+  ['dev', '开发技术', 'github, gitlab, gitee, bitbucket, stackoverflow, stack overflow, npm, npmjs, pypi, docker, jetbrains, vercel, netlify, cloudflare, heroku, openai, chatgpt, anthropic, claude, gemini, huggingface, kaggle, leetcode, 力扣, csdn, 掘金, juejin, v2ex, cnblogs, 博客园, segmentfault, 服务器, ssh, 数据库, mysql, postgres, redis, mongodb, api key, token, 域名, godaddy, namecheap, 开发'],
+  ['cloud', '云服务存储', 'icloud, apple id, appleid, google drive, drive.google, dropbox, onedrive, 百度网盘, pan.baidu, 阿里云盘, aliyundrive, alipan, 夸克, quark, 坚果云, jianguoyun, 115, 天翼云盘, 和彩云, mega.nz, box.com, aws, amazon web services, 阿里云, aliyun, 腾讯云, cloud.tencent, qcloud, azure, 华为云, huaweicloud, 七牛, qiniu, digitalocean, vultr, linode, 网盘, 云盘, 云服务, nas, 群晖, synology'],
+  ['gov', '政务证件', 'gov, gov.cn, 政务, 政府, 个人所得税, 个税, 税务, chinatax, 社保, 12333, 公积金, 医保, 交管12123, 12123, 出入境, 护照, 身份证, 一网通办, 浙里办, 随申办, 粤省事, 粤商通, 北京通, 国家政务服务, 信用中国, 征信, 人民银行征信, 学法减分, 电子税务局'],
+  ['health', '健康医疗', '医院, 挂号, 门诊, 体检, 医疗, 医生, 好大夫, haodf, 微医, guahao, 平安好医生, 丁香, dxy, 阿里健康, 京东健康, 京东大药房, 药, keep, 健身, fitness, 运动, myfitnesspal, strava, 薄荷健康, 美柚, 健康, health'],
+  ['apps', '应用工具', 'apple, 苹果, 小米, xiaomi, mi.com, 华为, huawei, 荣耀, honor, oppo, vivo, samsung, 三星, 路由器, router, wifi, vpn, 机场, adobe, autodesk, 激活码, 序列号, license, 软件, app, 应用, 输入法, 讯飞, 百度账号, baidu, 360, 腾讯账号, 微软账户, microsoft account, google account, accounts.google'],
+  ['other', '其他', ''],
+].map(([id, name, kw]) => ({ id, name, keywords: splitKw(kw) }));
+
+const DEMO_ENTRIES = [
+  ['Steam', 'https://store.steampowered.com', 'demo_player', 'Xk9!fake-Steam-21'],
+  ['原神（米哈游通行证）', 'https://user.mihoyo.com', 'demo@example.com', 'fake-Genshin-42'],
+  ['招商银行', 'https://www.cmbchina.com', '6225 **** **** 0000', 'Demo#Bank2026', '仅演示，不是真实卡号'],
+  ['支付宝', 'https://www.alipay.com', '138****0000', 'fake-pay-8812'],
+  ['微信', 'https://weixin.qq.com', 'demo_wechat', '123456'],
+  ['Gmail', 'https://mail.google.com', 'demo.user@gmail.com', 'Demo-Mail-7781'],
+  ['淘宝', 'https://www.taobao.com', 'demo_buyer', '123456'],
+  ['美团', 'https://www.meituan.com', '138****0000', 'fake-Meituan-31'],
+  ['携程旅行', 'https://www.ctrip.com', 'demo_trip', 'fake-Trip-905'],
+  ['哔哩哔哩', 'https://www.bilibili.com', 'demo_bili', 'fake-Bili-2233'],
+  ['中国大学MOOC', 'https://www.icourse163.org', 'demo_student', 'fake-Mooc-118'],
+  ['飞书', 'https://www.feishu.cn', 'demo@company.example', 'fake-Lark-660'],
+  ['GitHub', 'https://github.com', 'demo-dev', 'fake-GH-pass-0'],
+  ['iCloud', 'https://www.icloud.com', 'demo@icloud.com', 'fake-Apple-ID-9'],
+  ['个人所得税', 'https://etax.chinatax.gov.cn', '3201**********0000', 'fake-Tax-2026'],
+  ['好大夫在线', 'https://www.haodf.com', 'demo_patient', 'fake-Health-77'],
+  ['小米账号', 'https://account.xiaomi.com', 'demo_mi', 'fake-Mi-4410'],
+  ['老家路由器', '', 'admin', 'admin'],
+];
+const DEMO_CSV = `name,url,username,password,note
+Epic Games,https://www.epicgames.com,demo_epic,fake-Epic-01,
+工商银行,https://www.icbc.com.cn,demo_icbc,fake-Icbc-02,网银登录
+PayPal,https://www.paypal.com,demo@example.com,fake-PP-03,
+小红书,https://www.xiaohongshu.com,demo_red,fake-Red-04,
+京东,https://www.jd.com,demo_jd,fake-JD-05,
+滴滴出行,https://www.didiglobal.com,138****0000,fake-Didi-06,
+Netflix,https://www.netflix.com,demo@example.com,fake-NF-07,
+钉钉,https://www.dingtalk.com,demo_ding,fake-Ding-08,
+阿里云,https://www.aliyun.com,demo_cloud,fake-Ali-09,
+社保查询,https://si.12333.gov.cn,demo_si,fake-SI-10,
+某个小论坛,https://bbs.example.org,demo_bbs,fake-Bbs-11,关键词匹配不到的例子
+Steam,https://store.steampowered.com,demo_player,Xk9!fake-Steam-21,已经存在的重复账号`;
+
+const S = { key: null, salt: null, iter: ITER, data: null, cat: 'all', q: '', last: Date.now(), clipT: 0, editing: null, catTouched: false };
+
+/* ---------- helpers ---------- */
+function splitKw(s) { return String(s || '').split(/[,，、;；\n]+/).map(x => x.trim()).filter(Boolean); }
+function uid() { return Array.from(crypto.getRandomValues(new Uint8Array(9)), b => b.toString(16).padStart(2, '0')).join(''); }
+function b64e(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+function b64d(s) { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function norm(s) { return String(s || '').normalize('NFKC').toLowerCase(); }
+function store(k, v) {
+  try {
+    if (v === undefined) return localStorage.getItem(k);
+    if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+    return true;
+  } catch (e) { return null; }
+}
+function hostOf(u) {
+  if (!u) return '';
+  const app = /^android:\/\/[^@/]*@([^/]+)/i.exec(u); if (app) return app[1].toLowerCase();
+  try { return new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); }
+  catch (e) { return ''; }
+}
+function safeHref(u) {
+  if (!u) return '';
+  const full = /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : 'https://' + u;
+  return /^https?:\/\//i.test(full) ? full : '';
+}
+let toastT = 0;
+function toast(msg, bad) {
+  let t = $('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = msg; t.classList.toggle('bad', !!bad); t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200);
+}
+function ask(title, msg, ok = '确定', danger = false) {
+  return new Promise(res => {
+    const d = $('#askDlg'), b = $('#askOk');
+    $('#askTitle').textContent = title; $('#askMsg').textContent = msg;
+    b.textContent = ok; b.className = 'btn ' + (danger ? 'danger-fill' : 'primary');
+    const done = v => { d.removeEventListener('close', onClose); b.onclick = null; $('#askCancel').onclick = null; if (d.open) d.close(); res(v); };
+    const onClose = () => done(false);
+    d.addEventListener('close', onClose);
+    b.onclick = () => done(true); $('#askCancel').onclick = () => done(false);
+    d.showModal();
+  });
+}
+function download(name, text, type) {
+  if (DEMO) { toast('演示版不能下载文件，正式版里这个按钮会直接保存文件', true); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function today() { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; }
+
+/* ---------- crypto ---------- */
+async function deriveKey(pw, salt, iter) {
+  const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function seal(key, salt, iter, data) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(JSON.stringify(data)));
+  return { app: 'private-vault', v: 1, kdf: 'PBKDF2-SHA256', iter, salt: b64e(salt), iv: b64e(iv), ct: b64e(ct), saved: new Date().toISOString() };
+}
+async function openBlob(blob, pw) {
+  const salt = b64d(blob.salt);
+  const key = await deriveKey(pw, salt, blob.iter);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(blob.iv) }, key, b64d(blob.ct));
+  return { key, salt, iter: blob.iter, data: JSON.parse(td.decode(pt)) };
+}
+function validBlob(b) { return b && typeof b === 'object' && b.app === 'private-vault' && b.salt && b.iv && b.ct && b.iter > 0; }
+async function persist() {
+  const blob = await seal(S.key, S.salt, S.iter, S.data);
+  if (!store(STORE_KEY, JSON.stringify(blob))) toast('保存失败：浏览器不允许存储。请马上到「备份与设置」下载加密备份。', true);
+}
+function readBlob() { try { const b = JSON.parse(store(STORE_KEY) || 'null'); return validBlob(b) ? b : null; } catch (e) { return null; } }
+
+/* ---------- classification ---------- */
+function matchKw(hay, k) {
+  if (/^[a-z0-9.\- ]+$/.test(k)) {        // latin keyword: must start at a word boundary
+    let i = hay.indexOf(k);
+    while (i >= 0) { if (i === 0 || !/[a-z0-9]/.test(hay[i - 1])) return true; i = hay.indexOf(k, i + 1); }
+    return false;
+  }
+  return hay.includes(k);
+}
+function classify(e, folder, cats = S.data.categories) {
+  const hay = norm([e.title, e.url, e.notes, folder].join(' '));
+  const host = norm(hostOf(e.url));
+  const f = norm(folder).trim();
+  let best = null, bs = 0;
+  for (const c of cats) {
+    let s = 0;
+    const cn = norm(c.name);
+    if (f && cn && (f === cn || f.includes(cn) || cn.includes(f))) s += 100;
+    for (const kw of c.keywords) {
+      const k = norm(kw); if (!k) continue;
+      if (matchKw(hay, k)) s += k.length + (host && matchKw(host, k) ? 2 : 0);
+    }
+    if (s > bs) { bs = s; best = c; }
+  }
+  return best ? best.id : 'other';
+}
+
+/* ---------- vault data ---------- */
+function fixData(d) {
+  d = d && typeof d === 'object' ? d : {};
+  if (!Array.isArray(d.categories) || !d.categories.length) d.categories = structuredClone(DEFAULT_CATS);
+  if (!d.categories.some(c => c.id === 'other')) d.categories.push({ id: 'other', name: '其他', keywords: [] });
+  if (!Array.isArray(d.entries)) d.entries = [];
+  const ids = new Set(d.categories.map(c => c.id));
+  for (const e of d.entries) { if (!ids.has(e.cat)) e.cat = 'other'; if (!e.id) e.id = uid(); }
+  d.v = 1;
+  return d;
+}
+function dupKey(e) { return [norm(hostOf(e.url) || e.title).trim(), norm(e.username).trim(), e.password || ''].join('\u0001'); }
+function pwClasses(p) { return [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(r => r.test(p)).length; }
+function isWeak(p) { return !!p && (p.length < 8 || pwClasses(p) <= 1); }
+function reuseMap() { const m = new Map(); for (const e of S.data.entries) if (e.password) m.set(e.password, (m.get(e.password) || 0) + 1); return m; }
+function isRisk(e, rm) { return isWeak(e.password) || (e.password && rm.get(e.password) > 1); }
+function catIndex(id) { return S.data.categories.findIndex(c => c.id === id); }
+function hue(i) { return `hsl(${Math.round((i * 137.5 + 160) % 360)} 46% 44%)`; }
+function catColor(id) { return id === 'other' ? 'hsl(160 6% 50%)' : hue(catIndex(id)); }
+function catName(id) { return (S.data.categories.find(c => c.id === id) || {}).name || '其他'; }
+
+/* ---------- lock / unlock ---------- */
+function showLock() {
+  for (const d of document.querySelectorAll('dialog[open]')) d.close();
+  const has = !!readBlob();
+  $('#app').hidden = true; $('#lock').hidden = false;
+  $('#unlockBox').hidden = !has; $('#setupBox').hidden = has;
+  $('#demoHint').hidden = !DEMO;
+  for (const id of ['#unlockPw', '#setPw1', '#setPw2']) $(id).value = '';
+  $('#unlockErr').textContent = ''; $('#setupErr').textContent = '';
+  setTimeout(() => (has ? $('#unlockPw') : $('#setPw1')).focus(), 30);
+}
+function lock() { S.key = null; S.salt = null; S.data = null; S.q = ''; $('#q').value = ''; showLock(); }
+function startSession() {
+  S.last = Date.now(); S.cat = 'all';
+  $('#lock').hidden = true; $('#app').hidden = false; $('#demoBanner').hidden = !DEMO;
+  render();
+}
+$('#unlockBox').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const blob = readBlob(); if (!blob) return showLock();
+  $('#unlockGo').disabled = true; $('#unlockErr').textContent = '';
+  try { const r = await openBlob(blob, $('#unlockPw').value); Object.assign(S, r); S.data = fixData(S.data); startSession(); }
+  catch (e) { $('#unlockErr').textContent = '主密码不正确。'; $('#unlockPw').select(); }
+  finally { $('#unlockGo').disabled = false; }
+});
+$('#setupBox').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const a = $('#setPw1').value, b = $('#setPw2').value;
+  if (a.length < 8) return void ($('#setupErr').textContent = '主密码至少 8 位。建议用一句只有你知道的话。');
+  if (a !== b) return void ($('#setupErr').textContent = '两次输入不一样。');
+  S.salt = crypto.getRandomValues(new Uint8Array(16)); S.iter = ITER;
+  S.key = await deriveKey(a, S.salt, S.iter);
+  S.data = fixData({ categories: structuredClone(DEFAULT_CATS), entries: [] });
+  await persist(); startSession();
+  toast('密码库已创建。可以点「导入」导入已有账号。');
+});
+$('#restoreBtn').onclick = () => $('#restoreFile').click();
+$('#restoreFile').onchange = async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  let blob; try { blob = JSON.parse(await f.text()); } catch (e) { blob = null; }
+  if (!validBlob(blob)) return toast('这个文件不是本应用导出的加密备份。', true);
+  if (readBlob() && !await ask('从备份恢复', '这会用备份替换这台设备上现有的密码库。现有数据如果没备份过会丢失。', '替换', true)) return;
+  store(STORE_KEY, JSON.stringify(blob));
+  showLock(); toast('备份已恢复，请输入那份备份的主密码解锁。');
+};
+
+/* activity + auto lock */
+for (const ev of ['pointerdown', 'keydown', 'input', 'wheel']) addEventListener(ev, () => { S.last = Date.now(); }, { passive: true, capture: true });
+setInterval(() => { if (S.key && Date.now() - S.last > IDLE_MS) { lock(); toast('5 分钟没有操作，已自动锁定。'); } }, 10000);
+$('#lockBtn').onclick = lock;
+
+/* ---------- main view ---------- */
+function render() { renderSide(); renderList(); }
+function renderSide() {
+  const m = {}; for (const e of S.data.entries) m[e.cat] = (m[e.cat] || 0) + 1;
+  const rm = reuseMap(); const risk = S.data.entries.filter(e => isRisk(e, rm)).length;
+  let h = `<button class="cat ${S.cat === 'all' ? 'on' : ''}" data-cat="all"><span class="dot" style="background:var(--ink)"></span>全部<span class="n">${S.data.entries.length}</span></button>`;
+  if (risk) h += `<button class="cat risk ${S.cat === 'risk' ? 'on' : ''}" data-cat="risk"><span class="dot" style="background:var(--warn)"></span>需要改密码<span class="n">${risk}</span></button>`;
+  h += `<div class="lbl">分类</div>`;
+  h += S.data.categories.map(c => `<button class="cat ${S.cat === c.id ? 'on' : ''}" data-cat="${esc(c.id)}"><span class="dot" style="background:${catColor(c.id)}"></span>${esc(c.name)}<span class="n">${m[c.id] || 0}</span></button>`).join('');
+  $('#side').innerHTML = h;
+}
+$('#side').addEventListener('click', ev => { const b = ev.target.closest('[data-cat]'); if (!b) return; S.cat = b.dataset.cat; render(); });
+$('#q').addEventListener('input', ev => { S.q = ev.target.value; renderList(); });
+
+function renderList() {
+  const rm = reuseMap();
+  const q = norm(S.q).trim();
+  let list = S.data.entries.filter(e =>
+    (S.cat === 'all' || (S.cat === 'risk' ? isRisk(e, rm) : e.cat === S.cat)) &&
+    (!q || norm([e.title, e.url, e.username, e.notes, catName(e.cat)].join(' ')).includes(q)));
+  list.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'));
+  if (S.cat === 'risk' && !S.data.entries.some(e => isRisk(e, rm))) { S.cat = 'all'; return render(); }
+  const title = S.cat === 'all' ? '全部账号' : S.cat === 'risk' ? '需要改密码' : catName(S.cat);
+  let h = `<div class="list-h"><h2>${esc(title)}</h2><span class="muted small">${list.length} 条${q ? '（搜索结果）' : ''}</span></div><div class="rows">`;
+  if (!S.data.entries.length) {
+    h += `<div class="empty"><p>密码库还是空的。可以把浏览器或其他密码管理器导出的 CSV 导入进来，会按关键词自动分好类；也可以手动新建。</p><div class="inline"><button class="btn primary" data-act="import">导入账号</button><button class="btn" data-act="new">新建账号</button></div></div>`;
+  } else if (!list.length) {
+    h += `<div class="empty"><p>${q ? '没有匹配的账号。' : '这个分类下还没有账号。'}</p></div>`;
+  } else {
+    if (S.cat === 'risk') h += `<div class="empty small" style="padding:12px 16px;text-align:left;justify-items:start"><p>这些账号的密码太短、太简单，或者和别的账号用了同一个密码。一个网站泄露就会连带其他账号，建议逐个改成随机密码。</p></div>`;
+    h += list.map(e => {
+      const host = hostOf(e.url), href = safeHref(e.url);
+      const chips = [];
+      if (S.cat === 'all' || S.cat === 'risk') chips.push(`<span class="chip">${esc(catName(e.cat))}</span>`);
+      if (isWeak(e.password)) chips.push('<span class="chip warn">弱密码</span>');
+      if (e.password && rm.get(e.password) > 1) chips.push(`<span class="chip warn">与 ${rm.get(e.password) - 1} 个账号同密码</span>`);
+      const initial = (e.title || host || '?').trim().charAt(0).toUpperCase();
+      return `<div class="row" data-id="${esc(e.id)}">
+        <div class="av" style="background:${catColor(e.cat)}">${esc(initial)}</div>
+        <div class="info"><div class="t"><span class="name">${esc(e.title)}</span>${chips.join('')}</div>
+          <div class="s"><span class="u">${esc(e.username || '—')}</span>${host ? ' · ' + esc(host) : ''}</div></div>
+        <div class="acts">
+          <button class="btn sm" data-act="cu" ${e.username ? '' : 'disabled'}>复制账号</button>
+          <button class="btn sm" data-act="cp" ${e.password ? '' : 'disabled'}>复制密码</button>
+          ${href ? `<a class="btn sm" href="${esc(href)}" target="_blank" rel="noopener noreferrer" data-act="go">打开</a>` : ''}
+          <button class="btn sm ghost" data-act="ed">编辑</button>
+        </div></div>`;
+    }).join('');
+  }
+  $('#list').innerHTML = h + '</div>';
+}
+$('#list').addEventListener('click', ev => {
+  const a = ev.target.closest('[data-act]');
+  if (a && a.dataset.act === 'import') return openImport();
+  if (a && a.dataset.act === 'new') return openEntry(null);
+  const row = ev.target.closest('.row'); if (!row) return;
+  const e = S.data.entries.find(x => x.id === row.dataset.id); if (!e) return;
+  if (!a) return openEntry(e.id);
+  if (a.dataset.act === 'cu') copy(e.username, '账号');
+  else if (a.dataset.act === 'cp') copy(e.password, '密码');
+  else if (a.dataset.act === 'ed') openEntry(e.id);
+});
+
+async function copy(text, label) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; }
+  catch (e) {
+    const t = document.createElement('textarea'); t.value = text; t.setAttribute('readonly', '');
+    t.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(t); t.select();
+    try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+    t.remove();
+  }
+  if (!ok) return toast('复制失败，请打开编辑框手动复制。', true);
+  if (label === '密码') {
+    toast('已复制密码，30 秒后清空剪贴板');
+    clearTimeout(S.clipT);
+    S.clipT = setTimeout(() => { navigator.clipboard?.writeText(' ').catch(() => {}); }, CLIP_MS);
+  } else toast('已复制' + label);
+}
+
+/* ---------- entry editor ---------- */
+function catOptions(sel) { return S.data.categories.map(c => `<option value="${esc(c.id)}" ${c.id === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join(''); }
+function openEntry(id) {
+  const e = id ? S.data.entries.find(x => x.id === id) : null;
+  S.editing = e ? e.id : null;
+  const defCat = e ? e.cat : (S.cat !== 'all' && S.cat !== 'risk' ? S.cat : 'other');
+  S.catTouched = !!e || defCat !== 'other';
+  $('#entryHead').textContent = e ? '编辑账号' : '新建账号';
+  $('#eTitle').value = e?.title || ''; $('#eUrl').value = e?.url || ''; $('#eUser').value = e?.username || '';
+  $('#ePw').value = e?.password || ''; $('#ePw').type = 'password'; $('#eShow').textContent = '显示';
+  $('#eNotes').value = e?.notes || ''; $('#eCat').innerHTML = catOptions(defCat);
+  $('#eSuggest').textContent = ''; $('#entryErr').textContent = '';
+  $('#eDel').hidden = !e;
+  $('#entryDlg').showModal(); $('#eTitle').focus();
+}
+function suggestCat() {
+  const draft = { title: $('#eTitle').value, url: $('#eUrl').value, notes: $('#eNotes').value };
+  const id = classify(draft, '');
+  if (!S.catTouched) $('#eCat').value = id;
+  $('#eSuggest').textContent = (draft.title || draft.url) ? (id === 'other' ? '没匹配到关键词，可以手动选分类。' : `按关键词匹配到：${catName(id)}`) : '';
+}
+for (const id of ['#eTitle', '#eUrl', '#eNotes']) $(id).addEventListener('input', suggestCat);
+$('#eCat').addEventListener('change', () => { S.catTouched = true; });
+$('#eShow').onclick = () => { const p = $('#ePw'); p.type = p.type === 'password' ? 'text' : 'password'; $('#eShow').textContent = p.type === 'password' ? '显示' : '隐藏'; };
+$('#eCopy').onclick = () => { if ($('#ePw').value) copy($('#ePw').value, '密码'); };
+$('#eGen').onclick = () => {
+  const len = Math.min(64, Math.max(8, parseInt($('#eLen').value, 10) || 16));
+  $('#ePw').value = genPw(len, $('#eSym').checked); $('#ePw').type = 'text'; $('#eShow').textContent = '隐藏';
+};
+function genPw(len, sym) {
+  const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789'];
+  if (sym) sets.push('!@#$%^&*-_=+?');
+  const all = sets.join('');
+  const rnd = n => { const lim = Math.floor(4294967296 / n) * n, a = new Uint32Array(1); let x; do { crypto.getRandomValues(a); x = a[0]; } while (x >= lim); return x % n; };
+  const out = sets.map(s => s[rnd(s.length)]);
+  while (out.length < len) out.push(all[rnd(all.length)]);
+  for (let i = out.length - 1; i > 0; i--) { const j = rnd(i + 1); [out[i], out[j]] = [out[j], out[i]]; }
+  return out.join('');
+}
+$('#eCancel').onclick = () => $('#entryDlg').close();
+$('#entryForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const v = { title: $('#eTitle').value.trim(), url: $('#eUrl').value.trim(), username: $('#eUser').value.trim(), password: $('#ePw').value, notes: $('#eNotes').value.trim(), cat: $('#eCat').value };
+  if (!v.title) v.title = hostOf(v.url);
+  if (!v.title) return void ($('#entryErr').textContent = '请填写名称或网址。');
+  if (S.editing) Object.assign(S.data.entries.find(x => x.id === S.editing), v, { updated: Date.now() });
+  else S.data.entries.push({ id: uid(), ...v, created: Date.now(), updated: Date.now() });
+  await persist(); $('#entryDlg').close(); render(); toast('已保存');
+});
+$('#eDel').onclick = async () => {
+  const e = S.data.entries.find(x => x.id === S.editing); if (!e) return;
+  if (!await ask('删除账号', `删除「${e.title}」？删除后无法恢复。`, '删除', true)) return;
+  S.data.entries = S.data.entries.filter(x => x.id !== e.id);
+  await persist(); $('#entryDlg').close(); render(); toast('已删除');
+};
+$('#newBtn').onclick = () => openEntry(null);
+
+/* ---------- category manager ---------- */
+let CD = [];
+function openCats() {
+  CD = S.data.categories.map(c => ({ id: c.id, name: c.name, kwText: c.keywords.join('、') }));
+  renderCatMgr(); $('#catDlg').showModal();
+}
+function renderCatMgr() {
+  const m = {}; for (const e of S.data.entries) m[e.cat] = (m[e.cat] || 0) + 1;
+  $('#catRows').innerHTML = CD.map((c, i) => `<div class="catrow" data-i="${i}">
+    <div class="catrow-h">
+      <span class="dot" style="background:${c.id === 'other' ? 'hsl(160 6% 50%)' : hue(i)}"></span>
+      <input type="text" id="cn_${esc(c.id)}" data-k="name" value="${esc(c.name)}" aria-label="分类名称">
+      <span class="muted small" style="white-space:nowrap">${m[c.id] || 0} 条</span>
+      <button type="button" class="btn sm ghost" data-a="up" ${i === 0 ? 'disabled' : ''} aria-label="上移">↑</button>
+      <button type="button" class="btn sm ghost" data-a="down" ${i === CD.length - 1 ? 'disabled' : ''} aria-label="下移">↓</button>
+      <button type="button" class="btn sm ghost danger" data-a="del" ${c.id === 'other' ? 'disabled title="「其他」用来存放没匹配到的账号，不能删除，但可以改名"' : ''}>删除</button>
+    </div>
+    ${c.id === 'other' ? '<p class="small muted" style="margin:0">没有命中任何关键词的账号会放在这里。</p>' : `<textarea id="ck_${esc(c.id)}" data-k="kw" rows="2" placeholder="关键词，用逗号或顿号分隔，例如：steam、原神、playstation">${esc(c.kwText)}</textarea>`}
+  </div>`).join('');
+}
+$('#catRows').addEventListener('input', ev => {
+  const row = ev.target.closest('.catrow'); if (!row) return; const c = CD[+row.dataset.i];
+  if (ev.target.dataset.k === 'name') c.name = ev.target.value; else if (ev.target.dataset.k === 'kw') c.kwText = ev.target.value;
+});
+$('#catRows').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-a]'); if (!b) return; const i = +b.closest('.catrow').dataset.i;
+  if (b.dataset.a === 'up' && i > 0) [CD[i - 1], CD[i]] = [CD[i], CD[i - 1]];
+  else if (b.dataset.a === 'down' && i < CD.length - 1) [CD[i + 1], CD[i]] = [CD[i], CD[i + 1]];
+  else if (b.dataset.a === 'del') CD.splice(i, 1);
+  renderCatMgr();
+});
+$('#catAdd').onclick = () => {
+  const c = { id: uid(), name: '新分类', kwText: '' };
+  const oi = CD.findIndex(x => x.id === 'other'); CD.splice(oi < 0 ? CD.length : oi, 0, c);
+  renderCatMgr(); const inp = document.getElementById('cn_' + c.id); inp.focus(); inp.select();
+};
+async function saveCats() {
+  const cats = CD.map(c => ({ id: c.id, name: c.name.trim() || '未命名分类', keywords: splitKw(c.kwText) }));
+  const ids = new Set(cats.map(c => c.id));
+  const moved = S.data.entries.filter(e => !ids.has(e.cat)).length;
+  if (moved && !await ask('删除分类', `被删除的分类里还有 ${moved} 条账号，它们会移到「其他」。`, '确认删除', true)) return false;
+  S.data.categories = cats;
+  for (const e of S.data.entries) if (!ids.has(e.cat)) e.cat = 'other';
+  await persist(); render(); return true;
+}
+$('#catSave').onclick = async () => { if (await saveCats()) { $('#catDlg').close(); toast('分类已保存'); } };
+$('#catCancel').onclick = () => $('#catDlg').close();
+$('#catReclass').onclick = async () => {
+  if (!await ask('按关键词重新分类', '会用现在的关键词重新给每条账号分类，你手动调整过的分类也会被覆盖。', '重新分类')) return;
+  if (!await saveCats()) return;
+  let n = 0;
+  for (const e of S.data.entries) { const c = classify(e, ''); if (c !== e.cat) { e.cat = c; n++; } }
+  await persist(); render(); $('#catDlg').close(); toast(`已重新分类，${n} 条账号换了分类`);
+};
+$('#catBtn').onclick = openCats;
+
+/* ---------- import ---------- */
+const MAP_FIELDS = [
+  ['title', '名称', ['name', 'title', '名称', '网站名称', '账号名称', '标题', '站点', '平台', '应用']],
+  ['url', '网址', ['url', 'login_uri', 'website', 'web site', 'uri', 'hostname', '网址', '网站', '链接', '地址', '域名']],
+  ['username', '账号', ['username', 'login_username', 'user name', 'user', 'login', 'email', 'e-mail', '账号', '帐号', '用户名', '登录名', '邮箱', '手机号', '手机']],
+  ['password', '密码', ['password', 'login_password', 'pass', 'pwd', '密码', '口令']],
+  ['notes', '备注', ['note', 'notes', 'extra', 'comments', 'comment', '备注', '说明', '描述']],
+  ['folder', '原分类', ['folder', 'grouping', 'group', 'category', 'tags', 'tag', '分类', '文件夹', '类别', '类型', '分组']],
+];
+let IMP = null;
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const first = text.slice(0, text.search(/\r?\n|$/));
+  const delim = [',', '\t', ';'].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"' && cell === '') q = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ''));
+}
+function guessMap(header) {
+  const h = header.map(x => norm(x).trim()), m = {}, used = new Set();
+  for (const [f, , names] of MAP_FIELDS) {
+    let idx = -1;
+    for (const n of names) { idx = h.findIndex((x, i) => !used.has(i) && x === n); if (idx >= 0) break; }
+    if (idx < 0) for (const n of names) {
+      if (n.length < 5 && !/[^\x00-\x7f]/.test(n)) continue;
+      idx = h.findIndex((x, i) => !used.has(i) && x.includes(n)); if (idx >= 0) break;
+    }
+    m[f] = idx; if (idx >= 0) used.add(idx);
+  }
+  return m;
+}
+function openImport() {
+  IMP = null;
+  $('#imp1').hidden = false; $('#imp2').hidden = true;
+  $('#impParse').hidden = false; $('#impGo').hidden = true; $('#impBack').hidden = true;
+  $('#impErr').textContent = ''; $('#impText').value = DEMO ? DEMO_CSV : '';
+  $('#impDlg').showModal();
+}
+async function readFileText(f) {
+  const buf = await f.arrayBuffer();
+  let t = new TextDecoder('utf-8').decode(buf);
+  if (t.includes('\uFFFD')) { try { t = new TextDecoder('gb18030').decode(buf); } catch (e) {} }
+  return t;
+}
+async function takeFile(f) {
+  if (!f) return;
+  if (f.size > 20 * 1024 * 1024) return void ($('#impErr').textContent = '文件太大（超过 20MB）。');
+  $('#impText').value = await readFileText(f);
+  parseImport();
+}
+$('#impFile').onchange = ev => { takeFile(ev.target.files[0]); ev.target.value = ''; };
+const drop = $('#drop');
+drop.addEventListener('dragover', ev => { ev.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', ev => { ev.preventDefault(); drop.classList.remove('over'); takeFile(ev.dataTransfer.files[0]); });
+$('#impParse').onclick = parseImport;
+function parseImport() {
+  const rows = parseCSV($('#impText').value);
+  if (!rows.length) return void ($('#impErr').textContent = '没有读到内容。请选择 CSV 文件，或粘贴带表头的表格。');
+  const map = guessMap(rows[0]);
+  const hasHeader = Object.values(map).some(v => v >= 0);
+  IMP = { rows, map, hasHeader, items: [], filter: 'all' };
+  $('#impHeader').checked = hasHeader; $('#impFilter').value = 'all';
+  $('#imp1').hidden = true; $('#imp2').hidden = false;
+  $('#impParse').hidden = true; $('#impGo').hidden = false; $('#impBack').hidden = false;
+  renderMap(); buildItems();
+}
+function renderMap() {
+  const width = Math.max(...IMP.rows.slice(0, 50).map(r => r.length));
+  const sample = IMP.hasHeader ? IMP.rows[0] : (IMP.rows[0] || []);
+  const opts = sel => `<option value="-1">（不导入）</option>` + Array.from({ length: width }, (_, i) =>
+    `<option value="${i}" ${i === sel ? 'selected' : ''}>第 ${i + 1} 列：${esc(String(sample[i] ?? '').slice(0, 18))}</option>`).join('');
+  $('#impMap').innerHTML = MAP_FIELDS.map(([f, label]) => `<label class="field"><span>${label}</span><select id="map_${f}" data-f="${f}">${opts(IMP.map[f])}</select></label>`).join('');
+}
+$('#impMap').addEventListener('change', ev => { const f = ev.target.dataset.f; if (f) { IMP.map[f] = +ev.target.value; buildItems(); } });
+$('#impHeader').onchange = ev => { IMP.hasHeader = ev.target.checked; renderMap(); buildItems(); };
+function buildItems() {
+  const { rows, map, hasHeader } = IMP;
+  const g = (r, f, raw) => { const v = map[f] >= 0 ? (r[map[f]] ?? '') : ''; return raw ? v : v.trim(); };
+  const seen = new Set(S.data.entries.map(dupKey));
+  IMP.items = [];
+  for (const r of hasHeader ? rows.slice(1) : rows) {
+    const it = { title: g(r, 'title'), url: g(r, 'url'), username: g(r, 'username'), password: g(r, 'password', true), notes: g(r, 'notes'), folder: g(r, 'folder') };
+    if (!it.title && !it.url && !it.username && !it.password) continue;
+    if (!it.title) it.title = hostOf(it.url) || it.username || '未命名';
+    it.cat = classify(it, it.folder);
+    const k = dupKey(it); it.dup = seen.has(k); seen.add(k); it.on = !it.dup;
+    IMP.items.push(it);
+  }
+  renderImpTable();
+}
+function renderImpTable() {
+  const items = IMP.items;
+  const vis = items.map((it, i) => [it, i]).filter(([it]) => IMP.filter === 'all' || (IMP.filter === 'dup' ? it.dup : it.cat === 'other'));
+  const LIMIT = 600;
+  const rowsH = vis.slice(0, LIMIT).map(([it, i]) => `<tr data-i="${i}" class="${it.on ? '' : 'off'}">
+    <td><input type="checkbox" data-k="on" ${it.on ? 'checked' : ''} aria-label="导入这一条"></td>
+    <td class="cut" title="${esc(it.title)}">${esc(it.title)}</td>
+    <td class="cut muted" title="${esc(it.url)}">${esc(hostOf(it.url) || it.url)}</td>
+    <td class="cut pw">${esc(it.username)}</td>
+    <td class="pw muted">${it.password ? '•'.repeat(Math.min(it.password.length, 10)) : '<span class="chip warn">空</span>'}</td>
+    <td><select data-k="cat" aria-label="分类">${catOptions(it.cat)}</select></td>
+    <td>${it.dup ? '<span class="chip warn">已存在</span>' : ''}${it.folder ? `<span class="chip">原：${esc(it.folder)}</span>` : ''}</td></tr>`).join('');
+  $('#impTable').innerHTML = `<thead><tr><th></th><th>名称</th><th>网址</th><th>账号</th><th>密码</th><th>分类</th><th>备注</th></tr></thead><tbody>${rowsH ||
+    '<tr><td colspan="7" class="muted">没有符合条件的行。</td></tr>'}</tbody>`;
+  renderImpSum(vis.length > LIMIT ? `表里只显示前 ${LIMIT} 条，其余也会按自动分类导入。` : '');
+}
+function renderImpSum(extra) {
+  const items = IMP.items, on = items.filter(x => x.on);
+  const by = {}; for (const it of on) by[it.cat] = (by[it.cat] || 0) + 1;
+  const dups = items.filter(x => x.dup).length;
+  const noMap = IMP.map.password < 0 && IMP.map.username < 0;
+  $('#impSum').innerHTML = (noMap ? '<p class="err" style="margin:0 0 6px">没认出「账号」和「密码」列，请在上面为每一项选对应的列。</p>' : '') +
+    `<p style="margin:0 0 6px">共读到 <b>${items.length}</b> 条，将导入 <b>${on.length}</b> 条${dups ? `，${dups} 条和库里已有账号完全相同，默认不导入` : ''}。${extra}</p>` +
+    `<div class="tally">${S.data.categories.filter(c => by[c.id]).map(c => `<span class="chip"><span class="dot" style="display:inline-block;margin-right:4px;background:${catColor(c.id)}"></span>${esc(c.name)} ${by[c.id]}</span>`).join('')}</div>` +
+    (by.other ? `<p class="muted" style="margin:6px 0 0">有 ${by.other} 条没匹配到关键词，放在「其他」。可以在表里直接改，也可以导入后去「分类管理」补关键词再重新分类。</p>` : '');
+  $('#impGo').textContent = `导入 ${on.length} 条`; $('#impGo').disabled = !on.length;
+}
+$('#impTable').addEventListener('change', ev => {
+  const tr = ev.target.closest('tr[data-i]'); if (!tr) return; const it = IMP.items[+tr.dataset.i];
+  if (ev.target.dataset.k === 'on') { it.on = ev.target.checked; tr.classList.toggle('off', !it.on); }
+  if (ev.target.dataset.k === 'cat') it.cat = ev.target.value;
+  renderImpSum('');
+});
+$('#impFilter').onchange = ev => { IMP.filter = ev.target.value; renderImpTable(); };
+$('#impAll').onclick = () => setVisible(true);
+$('#impNone').onclick = () => setVisible(false);
+function setVisible(v) { for (const it of IMP.items) if (IMP.filter === 'all' || (IMP.filter === 'dup' ? it.dup : it.cat === 'other')) it.on = v; renderImpTable(); }
+$('#impBack').onclick = () => { IMP = null; $('#imp1').hidden = false; $('#imp2').hidden = true; $('#impParse').hidden = false; $('#impGo').hidden = true; $('#impBack').hidden = true; };
+$('#impCancel').onclick = () => $('#impDlg').close();
+$('#impDlg').addEventListener('close', () => { IMP = null; $('#impText').value = ''; $('#impTable').innerHTML = ''; });
+$('#impGo').onclick = async () => {
+  const now = Date.now(); let n = 0;
+  for (const it of IMP.items) if (it.on) {
+    const notes = [it.notes, it.folder && !S.data.categories.some(c => c.name === it.folder) ? `原分类：${it.folder}` : ''].filter(Boolean).join('\n');
+    S.data.entries.push({ id: uid(), title: it.title, url: it.url, username: it.username, password: it.password, notes, cat: it.cat, created: now, updated: now }); n++;
+  }
+  await persist(); $('#impDlg').close(); S.cat = 'all'; render();
+  toast(`已导入 ${n} 条。建议到「备份与设置」下载一份加密备份。`);
+};
+$('#importBtn').onclick = openImport;
+
+/* ---------- backup & settings ---------- */
+$('#bakBtn').onclick = () => {
+  const b = readBlob();
+  $('#bakInfo').textContent = `当前 ${S.data.entries.length} 条账号，${S.data.categories.length} 个分类${b ? '，最后保存于 ' + new Date(b.saved).toLocaleString('zh-CN') : ''}。`;
+  for (const id of ['#mergePw', '#cpOld', '#cpNew1', '#cpNew2']) $(id).value = '';
+  $('#mergeFile').value = ''; $('#bakErr').textContent = '';
+  $('#bakDlg').showModal();
+};
+$('#bakClose').onclick = () => $('#bakDlg').close();
+$('#bakDown').onclick = async () => {
+  await persist();
+  download(`密码库备份-${today()}.json`, JSON.stringify(readBlob()), 'application/json');
+};
+$('#mergeGo').onclick = async () => {
+  const f = $('#mergeFile').files[0]; $('#bakErr').textContent = '';
+  if (!f) return void ($('#bakErr').textContent = '请先选择备份文件。');
+  let blob; try { blob = JSON.parse(await f.text()); } catch (e) { blob = null; }
+  if (!validBlob(blob)) return void ($('#bakErr').textContent = '这个文件不是本应用导出的加密备份。');
+  let other; try { other = fixData((await openBlob(blob, $('#mergePw').value)).data); } catch (e) { return void ($('#bakErr').textContent = '那份备份的主密码不正确。'); }
+  const idMap = {};
+  for (const c of other.categories) {
+    const same = S.data.categories.find(x => x.id === c.id || x.name === c.name);
+    if (same) idMap[c.id] = same.id;
+    else { const nc = { ...c, id: uid() }; const oi = S.data.categories.findIndex(x => x.id === 'other'); S.data.categories.splice(oi, 0, nc); idMap[c.id] = nc.id; }
+  }
+  const seen = new Set(S.data.entries.map(dupKey)); let n = 0;
+  for (const e of other.entries) { const k = dupKey(e); if (seen.has(k)) continue; seen.add(k); S.data.entries.push({ ...e, id: uid(), cat: idMap[e.cat] || 'other' }); n++; }
+  await persist(); render(); $('#bakDlg').close(); toast(`已合并 ${n} 条新账号`);
+};
+$('#cpGo').onclick = async () => {
+  $('#bakErr').textContent = '';
+  const a = $('#cpNew1').value, b = $('#cpNew2').value;
+  try { await openBlob(readBlob(), $('#cpOld').value); } catch (e) { return void ($('#bakErr').textContent = '当前主密码不正确。'); }
+  if (a.length < 8) return void ($('#bakErr').textContent = '新主密码至少 8 位。');
+  if (a !== b) return void ($('#bakErr').textContent = '两次输入的新主密码不一样。');
+  S.salt = crypto.getRandomValues(new Uint8Array(16)); S.iter = ITER; S.key = await deriveKey(a, S.salt, S.iter);
+  await persist(); $('#bakDlg').close(); toast('主密码已修改。旧的备份文件仍然需要旧主密码打开，建议重新下载一份备份。');
+};
+function csvCell(v) { v = String(v ?? ''); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+$('#csvDown').onclick = async () => {
+  if (!await ask('导出明文 CSV', '导出的文件里密码是明文，任何拿到这个文件的人都能看到。用完请立即删除。', '仍然导出', true)) return;
+  const lines = [['name', 'url', 'username', 'password', 'note', 'category'].join(',')]
+    .concat(S.data.entries.map(e => [e.title, e.url, e.username, e.password, e.notes, catName(e.cat)].map(csvCell).join(',')));
+  download(`密码库明文-${today()}.csv`, '﻿' + lines.join('\r\n'), 'text/csv');
+};
+$('#wipeGo').onclick = async () => {
+  if (!await ask('删除本机密码库', `将删除这台设备上的全部 ${S.data.entries.length} 条账号。没有备份就无法找回。`, '永久删除', true)) return;
+  store(STORE_KEY, null); lock(); toast('本机密码库已删除');
+};
+
+/* ---------- boot ---------- */
+(async function boot() {
+  if (!window.crypto || !crypto.subtle) {
+    $('#lock').querySelector('.lock-card').innerHTML = '<p class="err">这个浏览器不支持加密功能。请用新版 Chrome、Edge、Firefox 或 Safari 打开这个文件。</p>';
+    return;
+  }
+  if (store('__pv_test', '1') === null) toast('浏览器禁止了本地存储（可能是无痕模式），关闭页面后数据不会保留。', true);
+  else store('__pv_test', null);
+  if (DEMO && !readBlob()) {
+    S.salt = crypto.getRandomValues(new Uint8Array(16)); S.iter = ITER;
+    S.key = await deriveKey('demo1234', S.salt, S.iter);
+    S.data = fixData({ categories: structuredClone(DEFAULT_CATS), entries: [] });
+    const now = Date.now();
+    for (const [title, url, username, password, notes] of DEMO_ENTRIES) {
+      const e = { id: uid(), title, url, username, password, notes: notes || '', created: now, updated: now };
+      e.cat = classify(e, ''); S.data.entries.push(e);
+    }
+    await persist(); S.key = null; S.data = null;
+  }
+  showLock();
+})();
+</script>
+
+</body>
+</html>

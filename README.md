@@ -1,2 +1,7 @@
 # Account
-Self usage account app
+
+私人密码库：离线加密的个人账号密码管理器。
+
+打开 https://lvdiboy.github.io/Account/ 使用。所有账号数据用主密码加密后只保存在你自己设备的浏览器里，这个仓库里只有程序本身，没有任何账号数据。
+
+**不要把导出的 CSV 或加密备份文件提交到这个仓库。**
